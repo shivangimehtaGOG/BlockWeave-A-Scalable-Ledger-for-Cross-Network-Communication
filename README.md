@@ -154,11 +154,12 @@ Our vision is to make blockchain interoperability as simple as sending an email,
 ## Contributing
 We welcome contributions! Please read our contributing guidelines and submit pull requests for any improvements.
 
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+
 
 ## Contact
 For questions and support, please reach out to the BlockWeave team.
 
----
-**Built with ❤️ by the BlockWeave Team**
+##Address: 0xAe7CDc4CB8f82887e819d6eE404Ee65d7a2fd77c
+
+<img width="1920" height="921" alt="image" src="https://github.com/user-attachments/assets/6139b988-34a2-440b-920f-15e0b45da03e" />
+

@@ -43,6 +43,8 @@ contract BlockWeave {
     
     event MessageProcessed(uint256 indexed messageId, string targetNetwork);
     event NetworkBridgeRegistered(string networkName, address bridgeAddress);
+    event MessageUpdated(uint256 indexed messageId, string newContent);
+    event MessageCancelled(uint256 indexed messageId, address indexed sender, uint256 refundAmount);
     
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can call this function");
@@ -124,6 +126,61 @@ contract BlockWeave {
         
         emit MessageProcessed(messageId, messages[messageId].targetNetwork);
     }
+
+    // -------------------- New Useful Functions --------------------
+    
+    /**
+     * @dev Update message content before it's processed
+     * @param messageId The ID of the message
+     * @param newContent The new content for the message
+     */
+    function updateMessageContent(uint256 messageId, string memory newContent) external {
+        CrossChainMessage storage msgData = messages[messageId];
+        require(msg.sender == msgData.sender, "Only sender can update");
+        require(!msgData.isProcessed, "Message already processed");
+        require(bytes(newContent).length > 0, "Content cannot be empty");
+
+        msgData.content = newContent;
+        emit MessageUpdated(messageId, newContent);
+    }
+
+    /**
+     * @dev Cancel a message and refund fee if not processed
+     * @param messageId The ID of the message
+     */
+    function cancelMessage(uint256 messageId) external {
+        CrossChainMessage storage msgData = messages[messageId];
+        require(msg.sender == msgData.sender, "Only sender can cancel");
+        require(!msgData.isProcessed, "Message already processed");
+        uint256 refundAmount = msgData.fee;
+        
+        msgData.isProcessed = true; // mark as "finalized" to prevent re-entry
+        payable(msg.sender).transfer(refundAmount);
+
+        emit MessageCancelled(messageId, msg.sender, refundAmount);
+    }
+
+    /**
+     * @dev Get all unprocessed message IDs
+     */
+    function getUnprocessedMessages() external view returns (uint256[] memory unprocessed) {
+        uint256 count = 0;
+        for (uint256 i = 1; i <= messageCounter; i++) {
+            if (!messages[i].isProcessed) {
+                count++;
+            }
+        }
+
+        unprocessed = new uint256[](count);
+        uint256 index = 0;
+
+        for (uint256 i = 1; i <= messageCounter; i++) {
+            if (!messages[i].isProcessed) {
+                unprocessed[index] = i;
+                index++;
+            }
+        }
+    }
     
     // -------------------- View Functions --------------------
     
@@ -146,9 +203,6 @@ contract BlockWeave {
 
     /**
      * @dev Get all messages of a user filtered by target network
-     * @param user The address of the user
-     * @param targetNetwork The target network to filter messages
-     * @return filteredMessages Array of CrossChainMessage
      */
     function getUserMessagesByNetwork(
         address user,
@@ -157,7 +211,6 @@ contract BlockWeave {
         uint256[] memory allMessages = userMessages[user];
         uint256 count = 0;
 
-        // Count matches
         for (uint256 i = 0; i < allMessages.length; i++) {
             if (
                 keccak256(bytes(messages[allMessages[i]].targetNetwork)) ==
@@ -170,7 +223,6 @@ contract BlockWeave {
         filteredMessages = new CrossChainMessage[](count);
         uint256 index = 0;
 
-        // Collect matches
         for (uint256 i = 0; i < allMessages.length; i++) {
             if (
                 keccak256(bytes(messages[allMessages[i]].targetNetwork)) ==

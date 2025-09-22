@@ -63,8 +63,6 @@ contract BlockWeave {
     
     /**
      * @dev Send a cross-chain message
-     * @param targetNetwork The target blockchain network
-     * @param content The message content to send
      */
     function sendMessage(
         string memory targetNetwork,
@@ -94,8 +92,6 @@ contract BlockWeave {
     
     /**
      * @dev Register a new network bridge
-     * @param networkName The name of the network
-     * @param bridgeAddress The address of the bridge contract
      */
     function registerNetworkBridge(
         string memory networkName,
@@ -115,8 +111,7 @@ contract BlockWeave {
     }
     
     /**
-     * @dev Process a cross-chain message (mark as completed)
-     * @param messageId The ID of the message to process
+     * @dev Process a cross-chain message
      */
     function processMessage(uint256 messageId) external onlyOwner {
         require(messageId > 0 && messageId <= messageCounter, "Invalid message ID");
@@ -127,12 +122,8 @@ contract BlockWeave {
         emit MessageProcessed(messageId, messages[messageId].targetNetwork);
     }
 
-    // -------------------- New Useful Functions --------------------
-    
     /**
      * @dev Update message content before it's processed
-     * @param messageId The ID of the message
-     * @param newContent The new content for the message
      */
     function updateMessageContent(uint256 messageId, string memory newContent) external {
         CrossChainMessage storage msgData = messages[messageId];
@@ -146,40 +137,17 @@ contract BlockWeave {
 
     /**
      * @dev Cancel a message and refund fee if not processed
-     * @param messageId The ID of the message
      */
     function cancelMessage(uint256 messageId) external {
         CrossChainMessage storage msgData = messages[messageId];
         require(msg.sender == msgData.sender, "Only sender can cancel");
         require(!msgData.isProcessed, "Message already processed");
-        uint256 refundAmount = msgData.fee;
         
-        msgData.isProcessed = true; // mark as "finalized" to prevent re-entry
+        uint256 refundAmount = msgData.fee;
+        msgData.isProcessed = true; // mark as finalized
         payable(msg.sender).transfer(refundAmount);
 
         emit MessageCancelled(messageId, msg.sender, refundAmount);
-    }
-
-    /**
-     * @dev Get all unprocessed message IDs
-     */
-    function getUnprocessedMessages() external view returns (uint256[] memory unprocessed) {
-        uint256 count = 0;
-        for (uint256 i = 1; i <= messageCounter; i++) {
-            if (!messages[i].isProcessed) {
-                count++;
-            }
-        }
-
-        unprocessed = new uint256[](count);
-        uint256 index = 0;
-
-        for (uint256 i = 1; i <= messageCounter; i++) {
-            if (!messages[i].isProcessed) {
-                unprocessed[index] = i;
-                index++;
-            }
-        }
     }
     
     // -------------------- View Functions --------------------
@@ -199,39 +167,6 @@ contract BlockWeave {
     
     function getTotalMessages() external view returns (uint256) {
         return messageCounter;
-    }
-
-    /**
-     * @dev Get all messages of a user filtered by target network
-     */
-    function getUserMessagesByNetwork(
-        address user,
-        string memory targetNetwork
-    ) external view returns (CrossChainMessage[] memory filteredMessages) {
-        uint256[] memory allMessages = userMessages[user];
-        uint256 count = 0;
-
-        for (uint256 i = 0; i < allMessages.length; i++) {
-            if (
-                keccak256(bytes(messages[allMessages[i]].targetNetwork)) ==
-                keccak256(bytes(targetNetwork))
-            ) {
-                count++;
-            }
-        }
-
-        filteredMessages = new CrossChainMessage[](count);
-        uint256 index = 0;
-
-        for (uint256 i = 0; i < allMessages.length; i++) {
-            if (
-                keccak256(bytes(messages[allMessages[i]].targetNetwork)) ==
-                keccak256(bytes(targetNetwork))
-            ) {
-                filteredMessages[index] = messages[allMessages[i]];
-                index++;
-            }
-        }
     }
     
     // -------------------- Emergency Functions --------------------

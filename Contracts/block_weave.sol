@@ -1,4 +1,10 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
 
+/**
+ * @title BlockWeave
+ * @dev A scalable ledger for cross-network communication
+ */
 contract BlockWeave {
     struct CrossChainMessage {
         uint256 messageId;
